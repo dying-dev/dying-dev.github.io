@@ -5,6 +5,10 @@
     <meta http-equiv="x-ua-compatible" content="ie=edge">
     <title>Editor for TINY-83</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Helvetica">
+    <script language="javascript" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+    <script src="https://unpkg.com/@metamask/detect-provider/dist/detect-provider.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     <style>
     body {
       text-align: center;
@@ -67,44 +71,29 @@
       display: block;
       margin-right: auto;
       margin-left: auto;
-      max-width: 440px;
+      max-width: 500px;
     }
 
-    .tip-button {
-  width: 304px;
-  height: 89px;
-  background-size: 100%;
-  background-image: url('images/1_pay_mm_off.png');
-  cursor: pointer;
-}
-
-.tip-button:hover {
-  background-image: url('images/1_pay_mm_over.png');
-}
-
-.tip-button:active {
-  background-image: url('images/1_pay_mm_off.png');
-}
-
+    .pixel-canvas {
+      margin-left: auto;
+      margin-right: auto;
+    }
     </style>
 
   </head>
   <body>
     <div class="row">
-      <div class="column">
         <h1>Editor for TINY-83</h1>
         <table class="pixel-canvas"></table>
         <br>
-      </div>
-      <div class="column">
         <div class="inputs">
           <input type="button" class="new-button" value="New">
-          <p>*double-click to erase</p>
-          Code:
-          <input class="input-code" id="input-code" name="code">
+          <p>Hint: Click to draw, double-click to erase</p>
+          Copy and paste this screen code in <a href="https://tiny-83.github.io/tiny-83/">tiny-83</a>:
+          <input class="input-code" id="input-code" name="code" size="50" value="0, 0">
           <br><br>
-          Like this, Buy me a coffee on ETH:
-          <div class="tip-button"></div>
+          Like this? Tip me ETH :-)
+          <button class="tip-button new-button">Tip <i class="fa fa-heart" style="color:red"></i></button>
           <div class="message"></div>
         </div>
       </div>
@@ -223,31 +212,74 @@
     gridToPairOfUint160();
   });
 
-  var my_address = '0xaBF24cFEd50535790C1Cf3B1c706daB8395CFa5c'
+
+$(document).ready(function () {
+    if (window.ethereum != null) {
+      ethereum.on('accountsChanged', handleAccountsChanged);
+      setTimeout(connect, 500);
+      start();
+    }
+});
+
+let web3 = null;
+let currentAccount = null;
+
+async function start() {
+    const provider = await detectEthereumProvider();
+    if (provider) {
+        // If the provider returned by detectEthereumProvider is not the same as
+        // window.ethereum, something is overwriting it, perhaps another wallet.
+        if (provider !== window.ethereum) {
+            renderMessage('Do you have multiple wallets installed?');
+        }
+        web3 = new Web3(provider);
+    } else {
+        renderMessage("Please install the MetaMask extension and connect your wallet.");
+    }
+}
+
+function connect() {
+    ethereum
+        .request({ method: 'eth_requestAccounts' })
+        .then(handleAccountsChanged)
+        .catch((err) => {
+            if (err.code === 4001) {
+                // EIP-1193 userRejectedRequest error.
+                console.warn('Connect to MetaMask.');
+            } else {
+                console.error(err);
+            }
+        });
+}
+
+function handleAccountsChanged(accounts) {
+    if (accounts.length === 0) {
+        console.log("MetaMask is locked or you haven't connected any account. Please connect to MetaMask.");
+        $(".mint button").hide();
+    } else if (accounts[0] !== currentAccount) {
+        currentAccount = accounts[0];
+        $(".mint button").show();
+    }
+}
+
+var my_address = '0x525aA4419FfDF242220E2954610C91172a3fA925'
 var tipButton = document.querySelector('.tip-button')
 
 tipButton.addEventListener('click', function() {
 
-  if (typeof web3 === 'undefined') {
+  if (!web3) {
     return renderMessage('<div align="center">You need to install <a href="https://metamask.io/"><u>MetaMask</u></a> to use this.</a></div>')
-  }
-
-  else if (typeof typeof web3 !== 'undefined') {
+  } else {
     // Request account access if needed
     ethereum.enable().then(function () {
       // Acccounts now exposed
       web3.eth.sendTransaction({
         to: my_address,
-        from: web3.eth.accounts[0],
-        value: web3.toWei('0.01', 'ether'),
-        gas: 50000,
+        from: currentAccount,
+        value: Web3.utils.toWei('0.01', 'ether'),
       }, function (err, transactionHash) {
-        if (err) return renderMessage('There was a problem!: ' + err.message)
-
-        // If you get a transaction hash, you can assume it was sent,
-        // or if you want to guarantee it was received, you can poll
-        // for that transaction to be mined first.
-        renderMessage('Thanks for the generosity!!')
+        if (err) return renderMessage('There was a problem: ' + err.message)
+        renderMessage('Thanks for your generosity!')
       })
     });
   }
