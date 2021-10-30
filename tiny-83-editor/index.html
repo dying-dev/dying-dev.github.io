@@ -1,0 +1,207 @@
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <title>Editor for TINY-83</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Helvetica">
+    <style>
+    body {
+      text-align: center;
+      font-family: Arial;
+      background-color: #ececec;
+    }
+
+    * {
+      font-family: Arial;
+      color: grey;
+    }
+
+    /* Styles title */
+    h1 {
+      font-size: 2em;
+      text-transform: uppercase;
+    }
+
+    table,
+    tr,
+    td {
+      border: white 1px dotted;
+    }
+
+    table {
+      border-collapse: collapse;
+    }
+
+    tr {
+      height: 20px;
+    }
+
+    td {
+      min-width: 20px;
+      box-sizing: border-box;
+      background-color: #c9ddc9;
+    }
+
+    .new-button {
+    	border-radius: 7px;
+    	border: 1px solid #dcdcdc;
+    	font-weight: bold;
+    	padding: 6px 24px;
+    	text-decoration: none;
+      display: block;
+      margin-top: 1em;
+    }
+
+    .inputs {
+      text-align: left;
+      border-radius: 7px;
+      border: 1px solid #dcdcdc;
+      padding-left: 2em;
+      padding-top: 0.5em;
+      padding-bottom: 1.5em;
+      background-color : white;
+    }
+
+    .row {
+      display: block;
+      margin-right: auto;
+      margin-left: auto;
+      max-width: 440px;
+    }
+
+    </style>
+
+  </head>
+  <body>
+    <div class="row">
+      <div class="column">
+        <h1>Editor for TINY-83</h1>
+        <table class="pixel-canvas"></table>
+        <br>
+      </div>
+      <div class="column">
+        <div class="inputs">
+          <input type="button" class="new-button" value="New">
+          <p>*double-click to erase</p>
+          Code:
+          <input class="input-code" id="input-code" name="code">
+          <br><br>
+        </div>
+      </div>
+    </div>
+  </body>
+  <script>
+  const pixelCanvas = document.querySelector('.pixel-canvas');
+  const newButton = document.querySelector('.new-button');
+  const color = "#4b5a4b";
+  const bgColor = "#c9ddc9";
+
+  const gridWidth = 22;
+  const gridHeight = 14;
+  let grid = [];
+
+  function resetGrid() {
+    grid = [];
+    for (let i = 0; i < gridHeight; i++) {
+      const row = [];
+      for (let j = 0; j < gridWidth; j++) {
+        row.push(false);
+      }
+      grid.push(row);
+    }
+  }
+
+  function gridToPairOfUint160() {
+    let gridR = grid.map((val, index) => [grid].map(row => row[index]).reverse());
+    grid2R = gridR[0].map((val, index) => gridR.map(row => row[index]).reverse())[0];
+    let leftPart = 0n;
+    let rightPart = 0n;
+    for (let i = 0; i < gridHeight; i++) {
+      for (let j = 0; j < gridWidth; j++) {
+        const power = BigInt(13 - i) + 14n * BigInt(j % 11);
+        const diff = grid2R[i][j] ? (2n ** power) : 0n;
+        if (j < 11) {
+          leftPart += diff;
+        } else {
+          rightPart += diff;
+        }
+      }
+    }
+    leftCode = leftPart.toString();
+    rightCode = rightPart.toString();
+    let inputCode = document.getElementById("input-code");
+    inputCode.value = `${leftCode}, ${rightCode}`;
+  }
+
+  function makeGrid() {
+    resetGrid()
+    // If grid already present, clears any cells that have been filled in
+    while (pixelCanvas.firstChild) {
+      pixelCanvas.removeChild(pixelCanvas.firstChild);
+      }
+    // Creates rows and cells
+    for (let i = 0; i < gridHeight; i++) {
+      let gridRow = document.createElement('tr');
+      pixelCanvas.appendChild(gridRow);
+      for (let j = 0; j < gridWidth; j++) {
+        let gridCell = document.createElement('td');
+        gridCell.setAttribute("x", i);
+        gridCell.setAttribute("y", j);
+        gridRow.appendChild(gridCell);
+        // Fills in cell with selected color upon mouse press ('mousedown', unlike 'click', doesn't also require release of mouse button)
+        gridCell.addEventListener('mousedown', function() {
+          this.style.backgroundColor = color;
+          grid[this.getAttribute("x")][this.getAttribute("y")] = true;
+          gridToPairOfUint160();
+        })
+       }
+    }
+  }
+
+  makeGrid();
+
+  // Enables color dragging with selected color (code for filling in single cell is above). (No click on 'draw' mode needed; this is default mode)
+  let down = false; // Tracks whether or not mouse pointer is pressed
+
+  // Listens for mouse pointer press and release on grid. Changes value to true when pressed, but sets it back to false as soon as released
+  pixelCanvas.addEventListener('mousedown', function(e) {
+  	down = true;
+  	pixelCanvas.addEventListener('mouseup', function() {
+  		down = false;
+  	});
+    // Ensures cells won't be colored if grid is left while pointer is held down
+    pixelCanvas.addEventListener('mouseleave', function() {
+      down = false;
+    });
+
+    pixelCanvas.addEventListener('mouseover', function(e) {
+      // 'color' defined here rather than globally so JS checks whether user has changed color with each new mouse press on cell
+      // While mouse pointer is pressed and within grid boundaries, fills cell with selected color. Inner if statement fixes bug that fills in entire grid
+    	if (down) {
+        // 'TD' capitalized because element.tagName returns upper case for DOM trees that represent HTML elements
+        if (e.target.tagName === 'TD') {
+        	e.target.style.backgroundColor = color;
+          grid[e.target.getAttribute("x")][e.target.getAttribute("y")] = true;
+          gridToPairOfUint160();
+        }
+      }
+    });
+  });
+
+  // Adds color-fill functionality. e.preventDefault(); intercepts page refresh on button click
+  newButton.addEventListener('click', function(e) {
+    resetGrid();
+    e.preventDefault();
+    pixelCanvas.querySelectorAll('td').forEach(td => td.style.backgroundColor = bgColor);
+    gridToPairOfUint160();
+  });
+
+  // Removes color from cell upon double-click
+  pixelCanvas.addEventListener('dblclick', e => {
+    e.target.style.backgroundColor = bgColor;
+    grid[e.target.getAttribute("x")][e.target.getAttribute("y")] = false;
+    gridToPairOfUint160();
+  });
+  </script>
+</html>
