@@ -144,7 +144,9 @@ function handleAccountsChanged(accounts) {
 }
 
 connectButton.addEventListener('click', function() {
-  if (window.ethereum != null) {
+  if (window.ethereum == null) {
+    return renderMessage('<div align="center">You need to install MetaMask or if on mobile use the browser in MetaMask app</div>')
+  } else {
     ethereum.on('accountsChanged', handleAccountsChanged);
     setTimeout(connect, 500);
     start();
@@ -156,7 +158,7 @@ connectButton.addEventListener('click', function() {
 
 tipButton.addEventListener('click', function() {
   if (!web3) {
-    return renderMessage('<div align="center">You need to install <a href="https://metamask.io/"><u>MetaMask</u></a> to use this.</a></div>')
+    return renderMessage('<div align="center">You need to install MetaMask or if on mobile use the browser in MetaMask app</div>')
   } else {
     ethereum.enable().then(function () {
       web3.eth.sendTransaction({
