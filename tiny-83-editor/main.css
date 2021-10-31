@@ -57,7 +57,7 @@ td {
   display: block;
   margin-right: auto;
   margin-left: auto;
-  max-width: 500px;
+  width: 500px;
 }
 
 .pixel-canvas {
@@ -67,4 +67,8 @@ td {
 
 .tip-amount {
   width: 40px;
+}
+
+.input-code {
+  width: 400px;
 }
